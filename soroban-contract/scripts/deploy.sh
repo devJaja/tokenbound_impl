@@ -175,7 +175,13 @@ else
   EVENT_MANAGER_ID=$(deploy_contract event_manager)
   cfg_set event_manager_id "$EVENT_MANAGER_ID"
   ok "event_manager deployed: $EVENT_MANAGER_ID"
+fi
 
+# Initialize event_manager (separate check so retries work if deploy succeeded but init failed)
+EM_INITIALIZED=$(cfg_get event_manager_initialized)
+if [[ -n "$EM_INITIALIZED" ]]; then
+  skip "event_manager initialization"
+else
   log "  Initializing event_manager with ticket_factory..."
   invoke "$EVENT_MANAGER_ID" initialize \
     --ticket_factory "$TICKET_FACTORY_ID"
