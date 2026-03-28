@@ -9,6 +9,7 @@ use soroban_sdk::{
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Error {
     AccountAlreadyDeployed = 1,
+    NotInitialized = 2,
 }
 
 /// Storage keys for the registry contract
@@ -155,7 +156,7 @@ impl TbaRegistry {
             .storage()
             .instance()
             .get(&DataKey::ImplementationWasmHash)
-            .expect("Registry not initialized");
+            .ok_or(Error::NotInitialized)?;
 
         // Create the same composite salt used in get_account()
         let composite_salt =
