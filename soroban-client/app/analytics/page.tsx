@@ -1,5 +1,6 @@
 import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 import AnalyticsPageView from "@/components/AnalyticsPageView";
+import ContractEventFeed from "@/components/ContractEventFeed";
 import Header from "@/components/Header";
 
 export default function AnalyticsPage() {
@@ -23,6 +24,7 @@ export default function AnalyticsPage() {
         </section>
 
         <AnalyticsDashboard />
+        <ContractEventFeed />
       </main>
     </div>
   );
