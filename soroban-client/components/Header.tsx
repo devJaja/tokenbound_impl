@@ -4,11 +4,36 @@ import Link from "next/link";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
+import type { WalletProviderId } from '@/contexts/walletAdapters';
 
 export default function Header() {
-  const { address, isConnected, isInstalled, connect, disconnect } =
-    useWallet();
+  const {
+    address,
+    providerId,
+    providerName,
+    availableProviders,
+    isConnected,
+    isInstalled,
+    connect,
+    disconnect,
+    setProviderId,
+  } = useWallet();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+
+  const openWalletModal = () => setIsWalletModalOpen(true);
+  const closeWalletModal = () => setIsWalletModalOpen(false);
+
+  const handleProviderSelect = async (selectedProviderId: WalletProviderId) => {
+    setProviderId(selectedProviderId);
+    try {
+      await connect(selectedProviderId);
+    } catch (err) {
+      console.error("Could not connect to provider", selectedProviderId, err);
+    } finally {
+      closeWalletModal();
+    }
+  };
 
   const formatAddress = (addr: string) => {
     return `${addr.substring(0, 4)}...${addr.substring(addr.length - 4)}`;
@@ -16,10 +41,15 @@ export default function Header() {
 
   const handleConnect = async () => {
     if (!isInstalled) {
-      alert("Please install Freighter wallet extension.");
+      openWalletModal();
       return;
     }
-    await connect();
+    try {
+      await connect(providerId);
+    } catch (err) {
+      console.error("Connect error", err);
+      openWalletModal();
+    }
   };
 
   const toggleMenu = () => {
@@ -96,7 +126,7 @@ export default function Header() {
               onClick={handleConnect}
               className="text-white border border-gray-400 px-6 py-2 rounded-lg hover:bg-white/10 transition font-medium"
             >
-              {isInstalled ? "Connect Wallet" : "Install Freighter"}
+              {isInstalled ? `Connect ${providerName}` : "Select Wallet"}
             </button>
           )}
 
@@ -220,7 +250,7 @@ export default function Header() {
                 }}
                 className="w-full text-white border border-gray-400 px-4 py-3 rounded-lg hover:bg-white/10 transition font-medium"
               >
-                {isInstalled ? "Connect Wallet" : "Install Freighter"}
+                {isInstalled ? `Connect ${providerName}` : "Select Wallet"}
               </button>
             )}
 
@@ -233,6 +263,47 @@ export default function Header() {
           </div>
         </div>
       </nav>
+
+      {/* Wallet Selection Modal */}
+      {isWalletModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-[#252525] rounded-xl p-4 w-full max-w-md text-white shadow-xl">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-lg font-bold">Choose Wallet Provider</h3>
+              <button onClick={closeWalletModal} className="text-white hover:text-gray-300">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {availableProviders.map((provider) => (
+                <button
+                  key={provider.id}
+                  onClick={() => {
+                    if (provider.installed) handleProviderSelect(provider.id);
+                    else window.open(provider.installUrl, "_blank");
+                  }}
+                  className={`w-full text-left rounded-lg border p-3 transition ${
+                    provider.id === providerId ? "border-blue-400" : "border-gray-600"
+                  } ${provider.installed ? "hover:border-blue-300" : "opacity-70 cursor-pointer"}`}
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <div className="font-semibold">{provider.name}</div>
+                      <div className="text-xs text-gray-300">{provider.description}</div>
+                    </div>
+                    <div className="text-xs">{provider.installed ? "Available" : "Install"}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-4 text-sm text-gray-300">
+              Not installed? Click to open the official install page then refresh.
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

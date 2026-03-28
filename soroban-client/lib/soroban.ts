@@ -1,6 +1,5 @@
 import StellarSdk from "@stellar/stellar-sdk";
 import { nativeToScVal } from "@stellar/stellar-base";
-import { signTransaction } from "@stellar/freighter-api";
 
 // "@stellar/stellar-sdk" has a default export that bundles several
 // constructors; we pull out the pieces we need for clarity.
@@ -17,7 +16,7 @@ const EVENT_MANAGER_CONTRACT =
   process.env.NEXT_PUBLIC_EVENT_MANAGER_CONTRACT || "<MISSING_CONTRACT_ID>";
 
 export interface CreateEventParams {
-  organizer: string; // freighter address
+  organizer: string; // wallet address
   theme: string;
   eventType: string;
   startTimeUnix: number;
@@ -27,14 +26,19 @@ export interface CreateEventParams {
   paymentToken: string; // contract address for token used for payment
 }
 
+export type SignTransactionFn = (
+  txXdr: string,
+  options: { networkPassphrase: string; address: string }
+) => Promise<string>;
+
 /**
- * Builds, signs (via Freighter) and submits a transaction to create a new
+ * Builds, signs (via provider adapter) and submits a transaction to create a new
  * event using the EventManager Soroban contract.
- *
- * The caller must have a Freighter wallet connected and the supplied
- * `organizer` address must match the source account in the wallet.
  */
-export async function createEvent(params: CreateEventParams) {
+export async function createEvent(
+  params: CreateEventParams,
+  signTransactionFn: SignTransactionFn
+) {
   if (EVENT_MANAGER_CONTRACT === "<MISSING_CONTRACT_ID>") {
     throw new Error(
       "EVENT_MANAGER_CONTRACT is not configured. Set NEXT_PUBLIC_EVENT_MANAGER_CONTRACT in your env."
@@ -77,8 +81,8 @@ export async function createEvent(params: CreateEventParams) {
 
   const txXdr = tx.toXDR();
 
-  // ask Freighter to sign
-  const { signedTxXdr } = await signTransaction(txXdr, {
+  // ask configured wallet provider to sign
+  const signedTxXdr = await signTransactionFn(txXdr, {
     networkPassphrase: NETWORK_PASSPHRASE,
     address: params.organizer,
   });
