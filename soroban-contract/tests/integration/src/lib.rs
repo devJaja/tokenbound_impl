@@ -102,11 +102,11 @@ fn setup() -> TestSetup {
     // 2. Deploy event manager, initialize with factory
     let event_id = env.register(event_manager::WASM, ());
     let event_client = event_manager::Client::new(&env, &event_id);
-    event_client.initialize(&factory_id);
+    event_client.initialize(&admin, &factory_id);
 
     // 3. Deploy TBA registry
     let tba_wasm_hash = env.deployer().upload_contract_wasm(tba_account::WASM);
-    let registry_id = env.register(tba_registry::WASM, (&tba_wasm_hash,));
+    let registry_id = env.register(tba_registry::WASM, (&admin, &tba_wasm_hash));
     let registry_client = tba_registry::Client::new(&env, &registry_id);
 
     // 4. Mock payment token
@@ -155,7 +155,7 @@ fn test_full_happy_path_purchase_and_create_tba() {
     assert_eq!(event.total_tickets, 10);
 
     // Purchase ticket
-    s.event_client.purchase_ticket(&buyer, &event_id);
+    s.event_client.purchase_ticket(&buyer, &event_id, &0u32);
     let event = s.event_client.get_event(&event_id);
     assert_eq!(event.tickets_sold, 1);
 
@@ -191,8 +191,8 @@ fn test_cancel_event_and_claim_refund() {
     let event_id = create_event(&s, &organizer);
 
     // Two buyers purchase tickets
-    s.event_client.purchase_ticket(&buyer1, &event_id);
-    s.event_client.purchase_ticket(&buyer2, &event_id);
+    s.event_client.purchase_ticket(&buyer1, &event_id, &0u32);
+    s.event_client.purchase_ticket(&buyer2, &event_id, &0u32);
     assert_eq!(s.event_client.get_event(&event_id).tickets_sold, 2);
 
     // Organizer cancels
@@ -212,7 +212,7 @@ fn test_refund_fails_if_event_not_canceled() {
     let buyer = Address::generate(&s.env);
 
     let event_id = create_event(&s, &organizer);
-    s.event_client.purchase_ticket(&buyer, &event_id);
+    s.event_client.purchase_ticket(&buyer, &event_id, &0u32);
 
     // Attempt refund without cancellation
     s.event_client.claim_refund(&buyer, &event_id);
@@ -226,7 +226,7 @@ fn test_double_refund_fails() {
     let buyer = Address::generate(&s.env);
 
     let event_id = create_event(&s, &organizer);
-    s.event_client.purchase_ticket(&buyer, &event_id);
+    s.event_client.purchase_ticket(&buyer, &event_id, &0u32);
     s.event_client.cancel_event(&event_id);
 
     s.event_client.claim_refund(&buyer, &event_id);
@@ -242,7 +242,7 @@ fn test_refund_fails_for_non_buyer() {
     let stranger = Address::generate(&s.env);
 
     let event_id = create_event(&s, &organizer);
-    s.event_client.purchase_ticket(&buyer, &event_id);
+    s.event_client.purchase_ticket(&buyer, &event_id, &0u32);
     s.event_client.cancel_event(&event_id);
 
     s.event_client.claim_refund(&stranger, &event_id);
@@ -260,7 +260,7 @@ fn test_transfer_ticket_and_new_owner_creates_tba() {
     let recipient = Address::generate(&s.env);
 
     let event_id = create_event(&s, &organizer);
-    s.event_client.purchase_ticket(&buyer, &event_id);
+    s.event_client.purchase_ticket(&buyer, &event_id, &0u32);
 
     let event = s.event_client.get_event(&event_id);
     let nft_addr = event.ticket_nft_addr;
@@ -296,7 +296,7 @@ fn test_create_tba_and_execute_through_it() {
     let buyer = Address::generate(&s.env);
 
     let event_id = create_event(&s, &organizer);
-    s.event_client.purchase_ticket(&buyer, &event_id);
+    s.event_client.purchase_ticket(&buyer, &event_id, &0u32);
 
     let event = s.event_client.get_event(&event_id);
     let nft_addr = event.ticket_nft_addr;
@@ -351,9 +351,9 @@ fn test_purchase_sold_out_event() {
         &s.payment_token,
     );
 
-    s.event_client.purchase_ticket(&Address::generate(&s.env), &event_id);
+    s.event_client.purchase_ticket(&Address::generate(&s.env), &event_id, &0u32);
     // Second purchase should fail
-    s.event_client.purchase_ticket(&Address::generate(&s.env), &event_id);
+    s.event_client.purchase_ticket(&Address::generate(&s.env), &event_id, &0u32);
 }
 
 #[test]
@@ -365,7 +365,7 @@ fn test_purchase_canceled_event_fails() {
     let event_id = create_event(&s, &organizer);
     s.event_client.cancel_event(&event_id);
 
-    s.event_client.purchase_ticket(&Address::generate(&s.env), &event_id);
+    s.event_client.purchase_ticket(&Address::generate(&s.env), &event_id, &0u32);
 }
 
 #[test]

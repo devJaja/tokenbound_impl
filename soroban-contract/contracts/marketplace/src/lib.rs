@@ -1,8 +1,10 @@
 #![no_std]
 
 use soroban_sdk::{
-    contract, contracterror, contractimpl, contracttype, Address, Env, Vec, token
+    contract, contracterror, contractimpl, contracttype, Address, BytesN, Env, Vec, token
 };
+
+use upgradeable as upg;
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -67,7 +69,10 @@ pub struct MarketplaceContract;
 impl MarketplaceContract {
     pub fn __constructor(env: Env, admin: Address, max_price_multiplier: i128, min_price_multiplier: i128) {
         admin.require_auth();
-        
+
+        upg::set_admin(&env, &admin);
+        upg::init_version(&env);
+
         let price_cap = PriceCap {
             max_price_multiplier,
             min_price_multiplier,
@@ -88,6 +93,7 @@ impl MarketplaceContract {
         token_id: i128,
         price: i128,
     ) -> u32 {
+        upg::require_not_paused(&env);
         seller.require_auth();
         
         // Verify seller owns the ticket by checking balance
@@ -133,6 +139,7 @@ impl MarketplaceContract {
         buyer: Address,
         listing_id: u32,
     ) -> Result<(), MarketplaceError> {
+        upg::require_not_paused(&env);
         buyer.require_auth();
         
         let listing: Listing = match env.storage().persistent().get(&DataKey::Listing(listing_id)) {
@@ -290,5 +297,35 @@ impl MarketplaceContract {
         env.storage().persistent().set(&DataKey::PriceCap, &price_cap);
         
         Ok(())
+    }
+
+    // ── Upgrade / admin ──────────────────────────────────────────────────────
+
+    pub fn schedule_upgrade(env: Env, new_wasm_hash: BytesN<32>) {
+        upg::schedule_upgrade(&env, new_wasm_hash);
+    }
+
+    pub fn cancel_upgrade(env: Env) {
+        upg::cancel_upgrade(&env);
+    }
+
+    pub fn commit_upgrade(env: Env) {
+        upg::commit_upgrade(&env);
+    }
+
+    pub fn pause(env: Env) {
+        upg::pause(&env);
+    }
+
+    pub fn unpause(env: Env) {
+        upg::unpause(&env);
+    }
+
+    pub fn transfer_admin(env: Env, new_admin: Address) {
+        upg::transfer_admin(&env, new_admin);
+    }
+
+    pub fn version(env: Env) -> u32 {
+        upg::get_version(&env)
     }
 }

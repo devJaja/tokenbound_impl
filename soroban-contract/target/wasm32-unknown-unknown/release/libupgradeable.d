@@ -1,0 +1,1 @@
+/home/jaja/Desktop/drips/tokenbound_impl/soroban-contract/target/wasm32-unknown-unknown/release/libupgradeable.rlib: /home/jaja/Desktop/drips/tokenbound_impl/soroban-contract/contracts/upgradeable/src/lib.rs

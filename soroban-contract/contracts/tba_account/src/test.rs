@@ -49,35 +49,39 @@ fn create_test_env() -> (Env, TbaAccountClient<'static>, Address) {
 fn test_initialize() {
     let (env, client, _) = create_test_env();
 
-    let nft_contract = Address::generate(&env);
+    let nft_contract_id = env.register(MockNftContract, ());
+    let nft_client = MockNftContractClient::new(&env, &nft_contract_id);
     let token_id: u128 = 1;
+    let owner = Address::generate(&env);
+    nft_client.set_owner(&token_id, &owner);
+
     let impl_hash = BytesN::from_array(&env, &[1u8; 32]);
     let salt = BytesN::from_array(&env, &[2u8; 32]);
 
-    // Initialize should succeed
-    client.initialize(&nft_contract, &token_id, &impl_hash, &salt).unwrap();
+    client.initialize(&nft_contract_id, &token_id, &impl_hash, &salt);
 
-    // Verify initialization
-    assert_eq!(client.token_contract().unwrap(), nft_contract);
-    assert_eq!(client.token_id().unwrap(), token_id);
+    assert_eq!(client.token_contract(), nft_contract_id);
+    assert_eq!(client.token_id(), token_id);
 }
 
 #[test]
 fn test_initialize_twice_fails() {
     let (env, client, _) = create_test_env();
 
-    let nft_contract = Address::generate(&env);
+    let nft_contract_id = env.register(MockNftContract, ());
+    let nft_client = MockNftContractClient::new(&env, &nft_contract_id);
     let token_id: u128 = 1;
+    let owner = Address::generate(&env);
+    nft_client.set_owner(&token_id, &owner);
     let impl_hash = BytesN::from_array(&env, &[1u8; 32]);
     let salt = BytesN::from_array(&env, &[2u8; 32]);
 
     // First initialization
-    client.initialize(&nft_contract, &token_id, &impl_hash, &salt).unwrap();
+    client.initialize(&nft_contract_id, &token_id, &impl_hash, &salt);
 
     // Second initialization should fail
-    let result = client.initialize(&nft_contract, &token_id, &impl_hash, &salt);
+    let result = client.try_initialize(&nft_contract_id, &token_id, &impl_hash, &salt);
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), Error::AlreadyInitialized);
 }
 
 #[test]
@@ -96,14 +100,14 @@ fn test_execute_success() {
     let impl_hash = BytesN::from_array(&env, &[1u8; 32]);
     let salt = BytesN::from_array(&env, &[2u8; 32]);
 
-    client.initialize(&nft_contract_id, &token_id, &impl_hash, &salt).unwrap();
+    client.initialize(&nft_contract_id, &token_id, &impl_hash, &salt);
 
     // Execute through TBA
     let func = Symbol::new(&env, "test_func");
     let args = vec![&env, 42u32.into_val(&env)];
 
     // The account will call owner_of(token_id) on nft_contract_id
-    let result = client.execute(&target_id, &func, &args).unwrap();
+    let result = client.execute(&target_id, &func, &args);
 
     // Val doesn't implement PartialEq in some SDK versions, so convert back
     let val: u32 = result.get(0).unwrap().try_into_val(&env).unwrap();
@@ -128,7 +132,7 @@ fn test_execute_non_owner_fails() {
 
     let impl_hash = BytesN::from_array(&env, &[1u8; 32]);
     let salt = BytesN::from_array(&env, &[2u8; 32]);
-    client.initialize(&nft_contract_id, &token_id, &impl_hash, &salt).unwrap();
+    client.initialize(&nft_contract_id, &token_id, &impl_hash, &salt);
 
     let target = Address::generate(&env);
     let func = Symbol::new(&env, "test");

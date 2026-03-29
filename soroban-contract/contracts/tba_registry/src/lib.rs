@@ -4,6 +4,8 @@ use soroban_sdk::{
     contract, contracterror, contractimpl, contracttype, Address, BytesN, Env, IntoVal, Symbol, Val, Vec,
 };
 
+use upgradeable as upg;
+
 // Error handling
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -39,7 +41,9 @@ impl TbaRegistry {
     /// # Arguments
     /// * `env` - The contract environment
     /// * `tba_account_wasm_hash` - WASM hash of the TBA Account contract to deploy
-    pub fn __constructor(env: Env, tba_account_wasm_hash: BytesN<32>) {
+    pub fn __constructor(env: Env, admin: Address, tba_account_wasm_hash: BytesN<32>) {
+        upg::set_admin(&env, &admin);
+        upg::init_version(&env);
         env.storage()
             .instance()
             .set(&DataKey::ImplementationWasmHash, &tba_account_wasm_hash);
@@ -249,6 +253,36 @@ impl TbaRegistry {
         let account_key =
             DataKey::DeployedAccount(implementation_hash, token_contract, token_id, salt);
         env.storage().persistent().get(&account_key)
+    }
+
+    // ── Upgrade / admin ──────────────────────────────────────────────────────
+
+    pub fn schedule_upgrade(env: Env, new_wasm_hash: BytesN<32>) {
+        upg::schedule_upgrade(&env, new_wasm_hash);
+    }
+
+    pub fn cancel_upgrade(env: Env) {
+        upg::cancel_upgrade(&env);
+    }
+
+    pub fn commit_upgrade(env: Env) {
+        upg::commit_upgrade(&env);
+    }
+
+    pub fn pause(env: Env) {
+        upg::pause(&env);
+    }
+
+    pub fn unpause(env: Env) {
+        upg::unpause(&env);
+    }
+
+    pub fn transfer_admin(env: Env, new_admin: Address) {
+        upg::transfer_admin(&env, new_admin);
+    }
+
+    pub fn version(env: Env) -> u32 {
+        upg::get_version(&env)
     }
 }
 

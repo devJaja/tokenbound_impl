@@ -1,0 +1,1 @@
+/home/jaja/Desktop/drips/tokenbound_impl/soroban-contract/target/wasm32-unknown-unknown/release/tba_registry.wasm: /home/jaja/Desktop/drips/tokenbound_impl/soroban-contract/contracts/tba_registry/src/lib.rs /home/jaja/Desktop/drips/tokenbound_impl/soroban-contract/contracts/upgradeable/src/lib.rs

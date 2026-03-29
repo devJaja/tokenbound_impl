@@ -4,6 +4,8 @@ use soroban_sdk::{
     Val, Vec,
 };
 
+use upgradeable as upg;
+
 // Error handling
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -143,7 +145,12 @@ impl TbaAccount {
         set_implementation_hash(&env, &implementation_hash);
         set_salt(&env, &salt);
         set_initialized(&env, &true);
-        
+
+        // The NFT owner at initialization time becomes the upgrade admin
+        let owner = get_nft_owner(&env, &token_contract, token_id);
+        upg::set_admin(&env, &owner);
+        upg::init_version(&env);
+
         // Extend instance TTL
         env.storage()
             .instance()
@@ -227,6 +234,36 @@ impl TbaAccount {
 
         // Invoke the target contract
         Ok(env.invoke_contract::<Vec<Val>>(&to, &func, args))
+    }
+
+    // ── Upgrade / admin ──────────────────────────────────────────────────────
+
+    pub fn schedule_upgrade(env: Env, new_wasm_hash: BytesN<32>) {
+        upg::schedule_upgrade(&env, new_wasm_hash);
+    }
+
+    pub fn cancel_upgrade(env: Env) {
+        upg::cancel_upgrade(&env);
+    }
+
+    pub fn commit_upgrade(env: Env) {
+        upg::commit_upgrade(&env);
+    }
+
+    pub fn pause(env: Env) {
+        upg::pause(&env);
+    }
+
+    pub fn unpause(env: Env) {
+        upg::unpause(&env);
+    }
+
+    pub fn transfer_admin(env: Env, new_admin: Address) {
+        upg::transfer_admin(&env, new_admin);
+    }
+
+    pub fn version(env: Env) -> u32 {
+        upg::get_version(&env)
     }
 
     /// CustomAccountInterface implementation: Check authorization

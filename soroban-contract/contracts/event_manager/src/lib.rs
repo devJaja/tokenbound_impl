@@ -7,6 +7,8 @@ use soroban_sdk::{
     Symbol, Vec,
 };
 
+use upgradeable as upg;
+
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(u32)]
@@ -29,6 +31,9 @@ pub enum Error {
     NotABuyer = 16,
     EventSoldOut = 17,
     TicketsBelowSold = 18,
+    ContractPaused = 19,
+    EventNotEnded = 20,
+    FundsAlreadyWithdrawn = 21,
 }
 
 #[contracttype]
@@ -40,6 +45,9 @@ pub enum DataKey {
     EventBuyers(u32),
     EventTiers(u32),
     BuyerPurchase(u32, Address),
+    EventBalance(u32),
+    FundsWithdrawn(u32),
+    Waitlist(u32),
 }
 
 /// A single ticket tier (e.g. VIP, General, Early Bird)
@@ -121,10 +129,12 @@ pub struct EventManager;
 
 #[contractimpl]
 impl EventManager {
-    pub fn initialize(env: Env, ticket_factory: Address) -> Result<(), Error> {
+    pub fn initialize(env: Env, admin: Address, ticket_factory: Address) -> Result<(), Error> {
         if env.storage().instance().has(&DataKey::TicketFactory) {
             return Err(Error::AlreadyInitialized);
         }
+        upg::set_admin(&env, &admin);
+        upg::init_version(&env);
         env.storage()
             .instance()
             .set(&DataKey::TicketFactory, &ticket_factory);
@@ -134,6 +144,7 @@ impl EventManager {
 
     /// Create a new event with tier support
     pub fn create_event_with_tiers(env: Env, params: CreateEventParams) -> Result<u32, Error> {
+        upg::require_not_paused(&env);
         params.organizer.require_auth();
 
         // Validate basic params
@@ -404,6 +415,7 @@ impl EventManager {
         tier_index: u32,
         quantity: u128,
     ) -> Result<(), Error> {
+        upg::require_not_paused(&env);
         buyer.require_auth();
 
         if quantity == 0 {
@@ -657,6 +669,43 @@ impl EventManager {
         Ok(())
     }
 
+    // ========== Upgrade / admin functions ==========
+
+    /// Schedule a contract upgrade (timelock: ~24 h). Admin only.
+    pub fn schedule_upgrade(env: Env, new_wasm_hash: BytesN<32>) {
+        upg::schedule_upgrade(&env, new_wasm_hash);
+    }
+
+    /// Cancel a pending upgrade before it is committed. Admin only.
+    pub fn cancel_upgrade(env: Env) {
+        upg::cancel_upgrade(&env);
+    }
+
+    /// Commit a previously scheduled upgrade after the timelock has elapsed. Admin only.
+    pub fn commit_upgrade(env: Env) {
+        upg::commit_upgrade(&env);
+    }
+
+    /// Pause all state-mutating operations. Admin only.
+    pub fn pause(env: Env) {
+        upg::pause(&env);
+    }
+
+    /// Resume normal operations. Admin only.
+    pub fn unpause(env: Env) {
+        upg::unpause(&env);
+    }
+
+    /// Transfer admin rights to a new address. Current admin only.
+    pub fn transfer_admin(env: Env, new_admin: Address) {
+        upg::transfer_admin(&env, new_admin);
+    }
+
+    /// Return the current contract version.
+    pub fn version(env: Env) -> u32 {
+        upg::get_version(&env)
+    }
+
     // ========== Private helpers ==========
 
     fn validate_event_params(
@@ -768,6 +817,16 @@ impl EventManager {
             Self::extend_persistent_ttl(env, &buyers_key);
         }
 
+        // Accumulate escrow balance
+        if total_paid > 0 {
+            let balance_key = DataKey::EventBalance(event_id);
+            let current: i128 = env.storage().persistent().get(&balance_key).unwrap_or(0);
+            env.storage()
+                .persistent()
+                .set(&balance_key, &current.saturating_add(total_paid));
+            Self::extend_persistent_ttl(env, &balance_key);
+        }
+
         Self::extend_persistent_ttl(env, &key);
     }
 
@@ -800,6 +859,9 @@ impl EventManager {
             .persistent()
             .extend_ttl(key, Self::ttl_threshold(), Self::ttl_extend_to());
     }
+
+    /// No-op stub — waitlist promotion is a future feature.
+    fn try_promote_from_waitlist(_env: &Env, _event_id: u32) {}
 
     const fn ttl_threshold() -> u32 {
         30 * 24 * 60 * 60 / 5

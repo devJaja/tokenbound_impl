@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+  "contracts/upgradeable",
   "contracts/tba_account",
   "contracts/tba_registry",
   "contracts/ticket_nft",

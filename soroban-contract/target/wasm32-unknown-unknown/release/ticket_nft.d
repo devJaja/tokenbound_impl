@@ -1,0 +1,1 @@
+/home/jaja/Desktop/drips/tokenbound_impl/soroban-contract/target/wasm32-unknown-unknown/release/ticket_nft.wasm: /home/jaja/Desktop/drips/tokenbound_impl/soroban-contract/contracts/ticket_nft/src/lib.rs /home/jaja/Desktop/drips/tokenbound_impl/soroban-contract/contracts/upgradeable/src/lib.rs

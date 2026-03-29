@@ -1,0 +1,1 @@
+/home/jaja/Desktop/drips/tokenbound_impl/soroban-contract/target/wasm32-unknown-unknown/release/libintegration_tests.rlib: /home/jaja/Desktop/drips/tokenbound_impl/soroban-contract/tests/integration/src/lib.rs

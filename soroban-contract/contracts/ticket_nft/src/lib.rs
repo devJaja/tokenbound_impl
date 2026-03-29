@@ -4,7 +4,9 @@
 
 #![no_std]
 
-use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, Env};
+use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, BytesN, Env};
+
+use upgradeable as upg;
 
 // Error handling
 #[contracterror]
@@ -46,6 +48,8 @@ impl TicketNft {
     /// * `env` - The contract environment
     /// * `minter` - Address that can mint new tickets
     pub fn __constructor(env: Env, minter: Address) {
+        upg::set_admin(&env, &minter);
+        upg::init_version(&env);
         env.storage().instance().set(&DataKey::Minter, &minter);
         env.storage().instance().set(&DataKey::NextTokenId, &1u128);
 
@@ -234,6 +238,36 @@ impl TicketNft {
             .instance()
             .get(&DataKey::Minter)
             .ok_or(Error::NotInitialized)
+    }
+
+    // ── Upgrade / admin ──────────────────────────────────────────────────────
+
+    pub fn schedule_upgrade(env: Env, new_wasm_hash: BytesN<32>) {
+        upg::schedule_upgrade(&env, new_wasm_hash);
+    }
+
+    pub fn cancel_upgrade(env: Env) {
+        upg::cancel_upgrade(&env);
+    }
+
+    pub fn commit_upgrade(env: Env) {
+        upg::commit_upgrade(&env);
+    }
+
+    pub fn pause(env: Env) {
+        upg::pause(&env);
+    }
+
+    pub fn unpause(env: Env) {
+        upg::unpause(&env);
+    }
+
+    pub fn transfer_admin(env: Env, new_admin: Address) {
+        upg::transfer_admin(&env, new_admin);
+    }
+
+    pub fn version(env: Env) -> u32 {
+        upg::get_version(&env)
     }
 }
 
