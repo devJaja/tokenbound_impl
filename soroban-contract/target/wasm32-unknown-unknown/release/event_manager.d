@@ -1,1 +1,0 @@
-/home/jaja/Desktop/drips/tokenbound_impl/soroban-contract/target/wasm32-unknown-unknown/release/event_manager.wasm: /home/jaja/Desktop/drips/tokenbound_impl/soroban-contract/contracts/event_manager/src/lib.rs /home/jaja/Desktop/drips/tokenbound_impl/soroban-contract/contracts/upgradeable/src/lib.rs
